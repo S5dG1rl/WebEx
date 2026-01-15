@@ -501,8 +501,6 @@ function renderOrders(orders) {
     `;
     tbody.appendChild(row);
   });
-  
-  // Добавьте обработчики кнопок при необходимости
 }
 
 // Вспомогательные функции
@@ -512,6 +510,68 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
+}
+
+function setupOrderActions() {
+  // Обработчик кнопки "Просмотр"
+  document.querySelectorAll('.view').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const orderId = parseInt(e.target.dataset.id);
+      viewOrder(orderId);
+    });
+  });
+  
+  // Обработчик кнопки "Редактирование"
+  document.querySelectorAll('.edit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const orderId = parseInt(e.target.dataset.id);
+      editOrder(orderId);
+    });
+  });
+  
+  // Обработчик кнопки "Удаление"
+  document.querySelectorAll('.delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const orderId = parseInt(e.target.dataset.id);
+      deleteOrderConfirm(orderId);
+    });
+  });
+  
+  // Обработчик формы редактирования
+  const editForm = document.getElementById('edit-order-form');
+  if (editForm) {
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const orderId = parseInt(document.getElementById('edit-order-id').value);
+      const orderData = {
+        name: document.getElementById('edit-order-name').value.trim(),
+        email: document.getElementById('edit-order-email').value.trim(),
+        phone: document.getElementById('edit-order-phone').value.trim(),
+        subscribe: document.getElementById('edit-order-subscribe').checked,
+        address: document.getElementById('edit-order-address').value.trim(),
+        deliveryDate: document.getElementById('edit-order-delivery-date').value,
+        deliveryTime: document.getElementById('edit-order-delivery-time').value,
+        comment: document.getElementById('edit-order-comment').value.trim()
+      };
+      
+      // Валидация
+      if (!orderData.name || !orderData.email || !orderData.phone || !orderData.address || 
+          !orderData.deliveryDate || !orderData.deliveryTime) {
+        showNotification('Заполните все обязательные поля', 'error');
+        return;
+      }
+      
+      try {
+        await updateOrder(orderId, orderData);
+        showNotification('Заказ обновлён', 'success');
+        closeAllModals();
+        loadUserOrders(); // Обновляем список заказов
+      } catch (error) {
+        showNotification('Ошибка обновления: ' + (error.message || 'Попробуйте позже'), 'error');
+      }
+    });
+  }
 }
 
 window.updateCartCount = updateCartCount;
