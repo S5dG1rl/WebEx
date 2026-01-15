@@ -512,6 +512,99 @@ function setupOrderForm() {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('delivery-date').min = today;
   
+  // Обработка отправки формы
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (cart.length === 0) {
+      showNotification('Корзина пуста', 'error');
+      return;
+    }
+    
+    // Сбор данных формы
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const subscribe = document.getElementById('subscribe')?.checked || false;
+    const comment = document.getElementById('comment').value.trim();
+    const deliveryTime = document.getElementById('delivery-time').value;
+    
+    // Преобразование даты в формат dd.mm.yyyy (требуется API)
+    let deliveryDate = '';
+    const dateInput = document.getElementById('delivery-date').value;
+    if (dateInput) {
+      const date = new Date(dateInput);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      deliveryDate = `${day}.${month}.${year}`;
+    }
+    
+    // Валидация обязательных полей
+    if (!name || !email || !phone || !address || !deliveryDate || !deliveryTime) {
+      showNotification('Пожалуйста, заполните все обязательные поля', 'error');
+      return;
+    }
+    
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showNotification('Некорректный email', 'error');
+      return;
+    }
+    
+    try {
+      const orderData = {
+        name,
+        email,
+        phone,
+        subscribe,
+        address,
+        deliveryDate,
+        deliveryTime,
+        comment,
+        items: [...cart]
+      };
+      
+      await createOrder(orderData);
+      
+      // Очистка корзины
+      cart = [];
+      localStorage.removeItem('cart');
+      updateCartCount();
+      
+      showNotification('Заказ успешно оформлен!', 'success');
+      
+      // Перенаправление на главную
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 2000);
+    } catch (error) {
+      console.error('Ошибка оформления заказа:', error);
+      showNotification('Ошибка оформления заказа: ' + (error.message || 'Попробуйте позже'), 'error');
+    }
+  });
+  
+  // Расчет стоимости при изменении даты/времени доставки
+  document.getElementById('delivery-date')?.addEventListener('change', updateTotalCost);
+  document.getElementById('delivery-time')?.addEventListener('change', updateTotalCost);
+  
+  // Сброс корзины
+  document.getElementById('reset-cart')?.addEventListener('click', () => {
+    localStorage.removeItem('cart');
+    cart = [];
+    updateCartCount();
+    loadCartItems();
+    updateTotalCost();
+    showNotification('Корзина очищена', 'info');
+  });
+}
+  
+  // Устанавливаем минимальную дату доставки - сегодня
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('delivery-date').min = today;
+  
   // Расчет стоимости при изменении даты или времени доставки
   document.getElementById('delivery-date').addEventListener('change', updateTotalCost);
   document.getElementById('delivery-time').addEventListener('change', updateTotalCost);
