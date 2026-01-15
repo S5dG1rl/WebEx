@@ -4,48 +4,30 @@ function getApiUrl(endpoint) {
   return `https://edu.std-900.ist.mospolytech.ru${endpoint}?api_key=${API_KEY}`;
 }
 
-/**
- * Получить список товаров с пагинацией
- */
 export async function getProducts(params = {}) {
   try {
-    const {
-      page = 1,
-      per_page = 12,
-      query = '',
-      sort_order = 'rating_desc'
-    } = params;
-
+    const { page = 1, per_page = 12, query = '', sort_order = 'rating_desc' } = params;
+    
     const url = new URL(getApiUrl('/exam-2024-1/api/goods'));
     url.searchParams.append('page', page);
     url.searchParams.append('per_page', per_page);
     if (query) url.searchParams.append('query', query);
     
-    // Маппинг сортировки из нашего формата в API
     const sortMapping = {
       'rating-asc': 'rating_asc',
-      'rating-desc': 'rating_desc', 
+      'rating-desc': 'rating_desc',
       'price-asc': 'price_asc',
       'price-desc': 'price_desc'
     };
     url.searchParams.append('sort_order', sortMapping[sort_order] || 'rating_desc');
 
     const response = await fetch(url.toString());
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
     const result = await response.json();
-    
     return {
       goods: Array.isArray(result.goods) ? result.goods : [],
-      pagination: result._pagination || {
-        current_page: page,
-        per_page: per_page,
-        total_count: 0
-      }
+      pagination: result._pagination || { current_page: page, per_page, total_count: 0 }
     };
   } catch (error) {
     console.error('Ошибка при получении товаров:', error);
@@ -53,15 +35,11 @@ export async function getProducts(params = {}) {
   }
 }
 
-// Остальные функции без изменений
 export async function getOrders() {
   try {
     const url = getApiUrl('/exam-2024-1/api/orders');
     const response = await fetch(url);
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -93,7 +71,7 @@ export async function createOrder(orderData) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
 
     return await response.json();
@@ -125,7 +103,7 @@ export async function updateOrder(orderId, orderData) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
 
     return await response.json();
@@ -139,12 +117,10 @@ export async function deleteOrder(orderId) {
   try {
     const url = getApiUrl(`/exam-2024-1/api/orders/${orderId}`);
     const response = await fetch(url, { method: 'DELETE' });
-    
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
-
     return await response.json();
   } catch (error) {
     console.error('Ошибка при удалении заказа:', error);
@@ -155,16 +131,10 @@ export async function deleteOrder(orderId) {
 export async function getAutocompleteSuggestions(query) {
   try {
     if (!query || query.length < 2) return [];
-    
     const url = new URL(getApiUrl('/exam-2024-1/api/autocomplete'));
     url.searchParams.append('query', query);
-    
     const response = await fetch(url.toString());
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
