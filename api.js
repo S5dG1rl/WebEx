@@ -1,28 +1,12 @@
-// Конфигурация API
-const BASE_URL = 'https://edu.std-900.ist.mospolytech.ru';
+// api.js — РАБОЧАЯ ВЕРСИЯ ДЛЯ ВАШЕГО API
 const API_KEY = '0ef845ea-3f76-4af2-9e70-1af33830ec6d';
 
-/**
- * Формирует URL с API-ключом
- * @param {string} endpoint - Эндпоинт API
- * @returns {string} Полный URL с API-ключом
- */
 function getApiUrl(endpoint) {
-  return `${BASE_URL}${endpoint}?api_key=${API_KEY}`;
+  return `https://edu.std-900.ist.mospolytech.ru${endpoint}?api_key=${API_KEY}`;
 }
 
 /**
  * Получить список товаров
- * @param {Object} params - Параметры запроса
- * @param {number} [params.page=1] - Номер страницы
- * @param {number} [params.per_page=20] - Товаров на страницу
- * @param {string} [params.query=''] - Поисковый запрос
- * @param {string[]} [params.categories=[]] - Категории товаров
- * @param {number} [params.min_price=0] - Минимальная цена
- * @param {number} [params.max_price=10000] - Максимальная цена
- * @param {boolean} [params.discount_only=false] - Только со скидкой
- * @param {string} [params.sort='rating-desc'] - Сортировка
- * @returns {Promise<Array>}
  */
 export async function getProducts(params = {}) {
   try {
@@ -37,48 +21,58 @@ export async function getProducts(params = {}) {
       sort = 'rating-desc'
     } = params;
 
+    // Формируем URL с параметрами
     const url = new URL(getApiUrl('/exam-2024-1/api/goods'));
-    
-    // Параметры пагинации и поиска
     url.searchParams.append('page', page);
     url.searchParams.append('per_page', per_page);
     if (query) url.searchParams.append('query', query);
-    
+
     const response = await fetch(url.toString());
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка загрузки товаров');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    
-    let products = await response.json();
-    
+
+    // API возвращает ЧИСТЫЙ МАССИВ
+    const products = await response.json();
+
+    // Проверка, что получили массив
+    if (!Array.isArray(products)) {
+      console.error('API вернул не массив:', products);
+      return [];
+    }
+
     // Фильтрация по категориям
+    let filtered = products;
     if (categories.length > 0) {
-      products = products.filter(product => 
+      filtered = filtered.filter(product =>
+        product.main_category && 
         categories.includes(product.main_category.toLowerCase())
       );
     }
-    
+
     // Фильтрация по цене
-    products = products.filter(product => {
-      const price = product.discount_price || product.actual_price;
+    filtered = filtered.filter(product => {
+      const price = product.discount_price ?? product.actual_price;
       return price >= min_price && price <= max_price;
     });
-    
+
     // Фильтрация товаров со скидкой
     if (discount_only) {
-      products = products.filter(product => 
-        product.discount_price && product.discount_price < product.actual_price
+      filtered = filtered.filter(product =>
+        product.discount_price != null && 
+        product.discount_price < product.actual_price
       );
     }
-    
+
     // Сортировка
-    products.sort((a, b) => {
-      const aPrice = a.discount_price || a.actual_price;
-      const bPrice = b.discount_price || b.actual_price;
-      const aRating = a.rating || 0;
-      const bRating = b.rating || 0;
-      
+    filtered.sort((a, b) => {
+      const aPrice = a.discount_price ?? a.actual_price;
+      const bPrice = b.discount_price ?? b.actual_price;
+      const aRating = a.rating ?? 0;
+      const bRating = b.rating ?? 0;
+
       switch (sort) {
         case 'price-asc': return aPrice - bPrice;
         case 'price-desc': return bPrice - aPrice;
@@ -87,68 +81,57 @@ export async function getProducts(params = {}) {
         default: return bRating - aRating;
       }
     });
-    
-    return products;
+
+    return filtered;
   } catch (error) {
     console.error('Ошибка при получении товаров:', error);
     return [];
   }
 }
 
-/**
- * Получить список заказов
- * @returns {Promise<Array>}
- */
+// Остальные функции остаются без изменений
 export async function getOrders() {
   try {
     const url = getApiUrl('/exam-2024-1/api/orders');
     const response = await fetch(url);
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка загрузки заказов');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Ошибка при получении заказов:', error);
     return [];
   }
 }
 
-/**
- * Создать новый заказ
- * @param {Object} orderData
- * @returns {Promise<Object>}
- */
 export async function createOrder(orderData) {
   try {
     const url = getApiUrl('/exam-2024-1/api/orders');
-    
-    // Подготавливаем данные заказа в соответствии с API
     const preparedData = {
       full_name: orderData.name,
       email: orderData.email,
       phone: orderData.phone,
       subscribe: orderData.subscribe || false,
       delivery_address: orderData.address,
-      delivery_date: orderData.deliveryDate, // API принимает YYYY-MM-DD
+      delivery_date: orderData.deliveryDate,
       delivery_interval: orderData.deliveryTime,
       comment: orderData.comment || '',
       good_ids: orderData.items
     };
-    
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(preparedData)
     });
-    
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка оформления заказа');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Ошибка при создании заказа:', error);
@@ -156,17 +139,9 @@ export async function createOrder(orderData) {
   }
 }
 
-/**
- * Обновить заказ
- * @param {number} orderId
- * @param {Object} orderData
- * @returns {Promise<Object>}
- */
 export async function updateOrder(orderId, orderData) {
   try {
     const url = getApiUrl(`/exam-2024-1/api/orders/${orderId}`);
-    
-    // Подготавливаем данные для обновления
     const preparedData = {};
     
     if (orderData.name !== undefined) preparedData.full_name = orderData.name;
@@ -177,20 +152,18 @@ export async function updateOrder(orderId, orderData) {
     if (orderData.deliveryTime !== undefined) preparedData.delivery_interval = orderData.deliveryTime;
     if (orderData.comment !== undefined) preparedData.comment = orderData.comment;
     if (orderData.subscribe !== undefined) preparedData.subscribe = orderData.subscribe;
-    
+
     const response = await fetch(url, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(preparedData)
     });
-    
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка обновления заказа');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Ошибка при обновлении заказа:', error);
@@ -198,24 +171,16 @@ export async function updateOrder(orderId, orderData) {
   }
 }
 
-/**
- * Удалить заказ
- * @param {number} orderId
- * @returns {Promise<Object>}
- */
 export async function deleteOrder(orderId) {
   try {
     const url = getApiUrl(`/exam-2024-1/api/orders/${orderId}`);
-    
-    const response = await fetch(url, {
-      method: 'DELETE'
-    });
+    const response = await fetch(url, { method: 'DELETE' });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка удаления заказа');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Ошибка при удалении заказа:', error);
@@ -223,11 +188,6 @@ export async function deleteOrder(orderId) {
   }
 }
 
-/**
- * Получить варианты автодополнения для поиска
- * @param {string} query - Поисковый запрос
- * @returns {Promise<Array>}
- */
 export async function getAutocompleteSuggestions(query) {
   try {
     if (!query || query.length < 2) return [];
@@ -237,10 +197,12 @@ export async function getAutocompleteSuggestions(query) {
     
     const response = await fetch(url.toString());
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка получения подсказок');
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Ошибка при получении подсказок:', error);
     return [];
