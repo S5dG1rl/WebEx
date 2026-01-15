@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Корзина</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Хедер -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo">Logo</a>
+      <div class="header-actions">
+        <a href="index.html" class="icon">🏠</a>
+        <a href="orders.html" class="icon">👤</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Уведомления -->
+  <div id="notification" class="notification"></div>
+
+  <!-- Основное содержимое -->
+  <main class="container">
+    <section class="cart-section">
+      <h2>Корзина</h2>
+      <div id="cart-items" class="products-grid">
+        <!-- Товары корзины будут загружены через JavaScript -->
+      </div>
+      <p id="cart-empty" style="display: none;">Корзина пуста. Перейдите в каталог, чтобы добавить товары.</p>
+    </section>
+
+    <section class="order-form">
+      <h2>Оформление заказа</h2>
+      <form id="order-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Имя</label>
+            <input type="text" id="name" required />
+          </div>
+          <div class="form-group">
+            <label for="address">Адрес доставки</label>
+            <input type="text" id="address" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phone">Номер телефона</label>
+            <input type="text" id="phone" required />
+          </div>
+          <div class="form-group">
+            <label for="delivery-date">Дата доставки</label>
+            <input type="date" id="delivery-date" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required />
+          </div>
+          <div class="form-group">
+            <label for="delivery-time">Временной интервал доставки</label>
+            <select id="delivery-time">
+              <option value="08:00-12:00">08:00-12:00</option>
+              <option value="12:00-18:00">12:00-18:00</option>
+              <option value="18:00-22:00" selected>18:00-22:00</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="comment">Комментарий</label>
+            <textarea id="comment" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 1; text-align: right;">
+            <p id="total-cost">Итоговая стоимость: 0 ₽</p>
+            <button type="button" id="reset-cart" class="btn">Сбросить</button>
+            <button type="submit" class="btn">Оформить</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- Футер -->
+  <footer>
+    <div class="container">
+      <p>© 2025 Название компании</p>
+    </div>
+  </footer>
+
+  <script src="api.js"></script>
+  <script src="scripts.js"></script>
+</body>
+</html>
