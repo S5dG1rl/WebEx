@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Интернет-магазин</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Хедер -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo">Logo</a>
+      <div class="search-bar">
+        <input type="text" placeholder="Введите запрос" />
+        <button>Найти</button>
+      </div>
+      <div class="header-actions">
+        <a href="cart.html" class="icon">🛒</a>
+        <a href="orders.html" class="icon">👤</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Уведомления -->
+  <div id="notification" class="notification"></div>
+
+  <!-- Основное содержимое -->
+  <main class="container">
+    <aside class="sidebar">
+      <h3>Категории</h3>
+      <div class="filter-group">
+        <label><input type="checkbox" data-category="1"> Категория 1</label>
+        <label><input type="checkbox" data-category="2"> Категория 2</label>
+        <label><input type="checkbox" data-category="3"> Категория 3</label>
+        <label><input type="checkbox" data-category="4"> Категория 4</label>
+        <label><input type="checkbox" data-category="5"> Категория 5</label>
+      </div>
+
+      <h3>Стоимость</h3>
+      <div class="price-filter">
+        <input type="number" id="price-from" value="100" min="0" />
+        <input type="number" id="price-to" value="5000" min="0" />
+      </div>
+
+      <div class="filter-group">
+        <label><input type="checkbox" id="discount-only"> Только товары со скидками</label>
+      </div>
+
+      <button id="apply-filters" class="btn">Применить</button>
+    </aside>
+
+    <section class="catalog">
+      <div class="catalog-header">
+        <h2>Каталог</h2>
+        <select id="sort-options">
+          <option value="rating-desc">По убыванию рейтинга</option>
+          <option value="rating-asc">По возрастанию рейтинга</option>
+          <option value="price-desc">По убыванию цены</option>
+          <option value="price-asc">По возрастанию цены</option>
+        </select>
+      </div>
+
+      <div id="products-grid" class="products-grid">
+        <!-- Товары будут загружены через JavaScript -->
+      </div>
+
+      <button id="load-more" class="btn">Загрузить ещё</button>
+    </section>
+  </main>
+
+  <!-- Футер -->
+  <footer>
+    <div class="container">
+      <p>© 2025 Название компании</p>
+    </div>
+  </footer>
+
+  <script src="api.js"></script>
+  <script src="scripts.js"></script>
+</body>
+</html>
