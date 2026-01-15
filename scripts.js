@@ -237,23 +237,20 @@ async function loadProducts(shouldReset = true) {
   
   try {
     const params = {
-      page: 1,
-      per_page: currentPage * productsPerPage,
+      page: currentPage,
+      per_page: productsPerPage,
       query: lastSearchQuery,
-      categories: activeFilters.categories,
-      min_price: activeFilters.minPrice,
-      max_price: activeFilters.maxPrice,
-      discount_only: activeFilters.discountOnly,
-      sort: activeFilters.sort
+      sort_order: activeFilters.sort
     };
     
-    const data = await getProducts(params);
-    products = data;
+    const result = await getProducts(params);
+    const { goods, pagination } = result;
+    products = shouldReset ? goods : [...products, ...goods];
     
     // Собираем уникальные категории для сайдбара
     if (shouldReset) {
       allCategories.clear();
-      products.forEach(product => {
+      goods.forEach(product => {
         if (product.main_category) {
           allCategories.add(product.main_category.toLowerCase());
         }
@@ -265,7 +262,9 @@ async function loadProducts(shouldReset = true) {
     
     // Показываем кнопку "Загрузить еще", если есть еще товары
     const loadMoreBtn = document.getElementById('load-more');
-    loadMoreBtn.style.display = products.length >= currentPage * productsPerPage ? 'block' : 'none';
+    if (loadMoreBtn) {
+      loadMoreBtn.style.display = (currentPage * productsPerPage < pagination.total_count) ? 'block' : 'none';
+    }
     
     if (products.length === 0 && shouldReset) {
       grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 40px; font-size: 1.2rem; color: #7f8c8d;">По вашему запросу ничего не найдено</p>';
@@ -313,7 +312,7 @@ function renderProducts(shouldReset = true) {
     return;
   }
   
-  // Определяем, какие товары отображать (только новые при загрузке еще)
+  // Определяем, какие товары отображать
   const startIndex = shouldReset ? 0 : (currentPage - 1) * productsPerPage;
   const endIndex = Math.min(currentPage * productsPerPage, products.length);
   
@@ -322,7 +321,7 @@ function renderProducts(shouldReset = true) {
     const productElement = document.createElement('div');
     productElement.className = 'product-card';
     productElement.innerHTML = `
-      <img src="${product.image_url || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
       <div class="product-info">
         <h3 class="product-name">${product.name}</h3>
         <div class="product-category">${product.main_category} / ${product.sub_category}</div>
@@ -388,7 +387,7 @@ async function loadCartItems() {
   try {
     // Загружаем товары по ID из корзины
     const allProducts = await getProducts({ page: 1, per_page: 100 });
-    const cartProducts = allProducts.filter(product => cart.includes(product.id));
+    const cartProducts = allProducts.goods.filter(product => cart.includes(product.id));
     
     renderCartItems(cartProducts);
     updateTotalCost();
@@ -410,7 +409,7 @@ function renderCartItems(products) {
     const item = document.createElement('div');
     item.className = 'product-card';
     item.innerHTML = `
-      <img src="${product.image_url || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
       <div class="product-info">
         <h3 class="product-name">${product.name}</h3>
         <div class="product-category">${product.main_category}</div>
@@ -453,7 +452,8 @@ function updateTotalCost() {
   if (cart.length === 0) return;
   
   // Сначала загружаем все товары, чтобы получить их цены
-  getProducts({ page: 1, per_page: 100 }).then(allProducts => {
+  getProducts({ page: 1, per_page: 100 }).then(result => {
+    const allProducts = result.goods;
     const cartProducts = allProducts.filter(product => cart.includes(product.id));
     const subtotal = cartProducts.reduce((sum, product) => {
       return sum + (product.discount_price || product.actual_price);
@@ -606,7 +606,33 @@ function setupOrderForm() {
 async function loadUserOrders() {
   try {
     const orders = await getOrders();
-    renderOrders(orders);
+    if (orders.length === 0) {
+      renderOrders([]);
+      return;
+    }
+
+    // Загружаем все товары для расчёта стоимости
+    const allProductsResult = await getProducts({ page: 1, per_page: 100 });
+    const productMap = new Map();
+    allProductsResult.goods.forEach(product => {
+      productMap.set(product.id, product);
+    });
+
+    // Добавляем поле total к каждому заказу
+    const ordersWithTotal = orders.map(order => {
+      let total = 0;
+      if (Array.isArray(order.good_ids)) {
+        order.good_ids.forEach(id => {
+          const product = productMap.get(id);
+          if (product) {
+            total += product.discount_price ?? product.actual_price;
+          }
+        });
+      }
+      return { ...order, total };
+    });
+
+    renderOrders(ordersWithTotal);
   } catch (error) {
     console.error('Ошибка загрузки заказов:', error);
     document.querySelector('#orders-table tbody').innerHTML = `
@@ -663,7 +689,7 @@ function renderOrders(orders) {
       <td>${index + 1}</td>
       <td>${formattedCreated}</td>
       <td title="${itemsList}">${itemsList.length > 50 ? itemsList.substring(0, 50) + '...' : itemsList}</td>
-      <td>${order.total_price.toLocaleString()} ₽</td>
+      <td>${order.total.toLocaleString()} ₽</td>
       <td>${formattedDelivery}<br>${order.delivery_interval}</td>
       <td>
         <button class="action-btn view" data-id="${order.id}" title="Просмотреть">👁️</button>
@@ -702,30 +728,42 @@ function viewOrder(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
     
-    // Форматируем данные для отображения
-    const createdDate = new Date(order.created_at).toLocaleString('ru-RU');
-    const deliveryDate = new Date(order.delivery_date).toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    // Загружаем товары для расчёта стоимости
+    getProducts({ page: 1, per_page: 100 }).then(res => {
+      const productMap = new Map(res.goods.map(p => [p.id, p]));
+      let total = 0;
+      if (Array.isArray(order.good_ids)) {
+        order.good_ids.forEach(id => {
+          const p = productMap.get(id);
+          if (p) total += p.discount_price ?? p.actual_price;
+        });
+      }
+      
+      // Форматируем данные для отображения
+      const createdDate = new Date(order.created_at).toLocaleString('ru-RU');
+      const deliveryDate = new Date(order.delivery_date).toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      
+      const details = document.getElementById('view-order-details');
+      details.innerHTML = `
+        <p><strong>Дата оформления:</strong> ${createdDate}</p>
+        <p><strong>Имя:</strong> ${order.full_name}</p>
+        <p><strong>Email:</strong> ${order.email}</p>
+        <p><strong>Телефон:</strong> ${order.phone}</p>
+        <p><strong>Подписка на рассылку:</strong> ${order.subscribe ? 'Да' : 'Нет'}</p>
+        <p><strong>Адрес доставки:</strong> ${order.delivery_address}</p>
+        <p><strong>Дата доставки:</strong> ${deliveryDate}</p>
+        <p><strong>Время доставки:</strong> ${order.delivery_interval}</p>
+        <p><strong>Состав заказа:</strong> ${order.good_ids.join(', ')}</p>
+        <p><strong>Стоимость:</strong> ${total.toLocaleString()} ₽</p>
+        <p><strong>Комментарий:</strong> ${order.comment || 'Не указан'}</p>
+      `;
+      
+      document.getElementById('view-order-modal').style.display = 'block';
     });
-    
-    const details = document.getElementById('view-order-details');
-    details.innerHTML = `
-      <p><strong>Дата оформления:</strong> ${createdDate}</p>
-      <p><strong>Имя:</strong> ${order.full_name}</p>
-      <p><strong>Email:</strong> ${order.email}</p>
-      <p><strong>Телефон:</strong> ${order.phone}</p>
-      <p><strong>Подписка на рассылку:</strong> ${order.subscribe ? 'Да' : 'Нет'}</p>
-      <p><strong>Адрес доставки:</strong> ${order.delivery_address}</p>
-      <p><strong>Дата доставки:</strong> ${deliveryDate}</p>
-      <p><strong>Время доставки:</strong> ${order.delivery_interval}</p>
-      <p><strong>Состав заказа:</strong> ${order.good_ids.join(', ')}</p>
-      <p><strong>Стоимость:</strong> ${order.total_price.toLocaleString()} ₽</p>
-      <p><strong>Комментарий:</strong> ${order.comment || 'Не указан'}</p>
-    `;
-    
-    document.getElementById('view-order-modal').style.display = 'block';
   }).catch(error => {
     console.error('Ошибка получения деталей заказа:', error);
     showNotification('Ошибка получения деталей заказа', 'error');
