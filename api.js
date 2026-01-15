@@ -1,4 +1,4 @@
-// api.js — РАБОЧАЯ ВЕРСИЯ ДЛЯ ВАШЕГО API
+// api.js — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
 const API_KEY = '0ef845ea-3f76-4af2-9e70-1af33830ec6d';
 
 function getApiUrl(endpoint) {
@@ -34,14 +34,9 @@ export async function getProducts(params = {}) {
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    // API возвращает ЧИСТЫЙ МАССИВ
-    const products = await response.json();
-
-    // Проверка, что получили массив
-    if (!Array.isArray(products)) {
-      console.error('API вернул не массив:', products);
-      return [];
-    }
+    // API возвращает объект { goods: [...], _pagination: {...} }
+    const result = await response.json();
+    const products = Array.isArray(result.goods) ? result.goods : [];
 
     // Фильтрация по категориям
     let filtered = products;
@@ -98,8 +93,8 @@ export async function getOrders() {
       const errorText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const result = await response.json();
+    return Array.isArray(result) ? result : [];
   } catch (error) {
     console.error('Ошибка при получении заказов:', error);
     return [];
