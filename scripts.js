@@ -236,21 +236,57 @@ async function loadProducts(shouldReset = true) {
   }
   
   try {
-    const params = {
-      page: currentPage,
-      per_page: productsPerPage,
-      query: lastSearchQuery,
-      sort_order: activeFilters.sort
-    };
+    // Загружаем ВСЕ товары (без фильтров)
+    const result = await getProducts({
+      page: 1,
+      per_page: 1000 // Загружаем все товары за один запрос
+    });
     
-    const result = await getProducts(params);
-    const { goods, pagination } = result;
-    products = shouldReset ? goods : [...products, ...goods];
+    let allProducts = result.goods;
     
-    // Собираем уникальные категории для сайдбара
+    // === КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ ===
+    // Фильтр по категориям
+    if (activeFilters.categories.length > 0) {
+      allProducts = allProducts.filter(product => 
+        activeFilters.categories.includes(product.main_category.toLowerCase())
+      );
+    }
+    
+    // Фильтр по цене
+    allProducts = allProducts.filter(product => {
+      const price = product.discount_price ?? product.actual_price;
+      return price >= activeFilters.minPrice && price <= activeFilters.maxPrice;
+    });
+    
+    // Фильтр "только со скидкой"
+    if (activeFilters.discountOnly) {
+      allProducts = allProducts.filter(product => 
+        product.discount_price != null && product.discount_price < product.actual_price
+      );
+    }
+    
+    // Сортировка
+    allProducts.sort((a, b) => {
+      const aPrice = a.discount_price ?? a.actual_price;
+      const bPrice = b.discount_price ?? b.actual_price;
+      const aRating = a.rating ?? 0;
+      const bRating = b.rating ?? 0;
+      
+      switch (activeFilters.sort) {
+        case 'price-asc': return aPrice - bPrice;
+        case 'price-desc': return bPrice - aPrice;
+        case 'rating-asc': return aRating - bRating;
+        case 'rating-desc': return bRating - aRating;
+        default: return bRating - aRating;
+      }
+    });
+    
+    products = allProducts;
+    
+    // Собираем категории для сайдбара
     if (shouldReset) {
       allCategories.clear();
-      goods.forEach(product => {
+      result.goods.forEach(product => {
         if (product.main_category) {
           allCategories.add(product.main_category.toLowerCase());
         }
@@ -258,7 +294,20 @@ async function loadProducts(shouldReset = true) {
       renderCategoriesFilter();
     }
     
-    renderProducts(shouldReset);
+    renderProducts(true); // Всегда сбрасываем отображение
+    
+    // Кнопка "Загрузить ещё" не нужна при клиентской фильтрации
+    const loadMoreBtn = document.getElementById('load-more');
+    if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+    
+  } catch (error) {
+    console.error('Ошибка загрузки товаров:', error);
+    grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #e74c3c;">Ошибка загрузки товаров</p>`;
+    showNotification('Ошибка загрузки товаров', 'error');
+  } finally {
+    isLoading = false;
+  }
+}
     
     // Показываем кнопку "Загрузить еще", если есть еще товары
     const loadMoreBtn = document.getElementById('load-more');
