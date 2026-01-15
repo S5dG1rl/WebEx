@@ -285,7 +285,7 @@ function renderProducts() {
     const card = document.createElement('div');
     card.className = 'product-card';
     card.innerHTML = `
-      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image  '}" alt="${product.name}">
       <div class="product-info">
         <h3 class="product-name">${product.name}</h3>
         <div class="product-category">${product.main_category}</div>
@@ -356,7 +356,7 @@ function renderCartItems(products) {
     const item = document.createElement('div');
     item.className = 'product-card';
     item.innerHTML = `
-      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image  '}" alt="${product.name}">
       <div class="product-info">
         <h3>${product.name}</h3>
         <div class="product-price">${(product.discount_price || product.actual_price).toLocaleString()} ₽</div>
@@ -414,11 +414,24 @@ function setupOrderForm() {
     const deliveryTime = document.getElementById('delivery-time').value;
     const dateInput = document.getElementById('delivery-date').value;
     
-    // Формат даты: dd.mm.yyyy
+    // ИСПРАВЛЕНИЕ: Валидация и формат даты
     let deliveryDate = '';
     if (dateInput) {
-      const d = new Date(dateInput);
-      deliveryDate = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+      const now = new Date();
+      const selectedDate = new Date(dateInput);
+      // Сравниваем только даты (без времени)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selected = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      
+      if (selected < today) {
+        showNotification('Дата доставки не может быть раньше сегодняшней', 'error');
+        return;
+      }
+      
+      const d = String(selectedDate.getDate()).padStart(2, '0');
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const y = selectedDate.getFullYear();
+      deliveryDate = `${d}.${m}.${y}`;
     }
     
     if (!name || !email || !phone || !address || !deliveryDate || !deliveryTime) {
@@ -501,19 +514,8 @@ function renderOrders(orders) {
     `;
     tbody.appendChild(row);
   });
-}
-
-// Вспомогательные функции
-function debounce(func, wait) {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
-
-function setupOrderActions() {
-  // Обработчик кнопки "Просмотр"
+  
+  // ДОБАВЛЕНО: обработчики кнопок
   document.querySelectorAll('.view').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const orderId = parseInt(e.target.dataset.id);
@@ -521,7 +523,6 @@ function setupOrderActions() {
     });
   });
   
-  // Обработчик кнопки "Редактирование"
   document.querySelectorAll('.edit').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const orderId = parseInt(e.target.dataset.id);
@@ -529,15 +530,99 @@ function setupOrderActions() {
     });
   });
   
-  // Обработчик кнопки "Удаление"
   document.querySelectorAll('.delete').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const orderId = parseInt(e.target.dataset.id);
       deleteOrderConfirm(orderId);
     });
   });
-  
-  // Обработчик формы редактирования
+}
+
+// ДОБАВЛЕНО: недостающие функции
+function viewOrder(orderId) {
+  getOrders().then(orders => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    getProducts({ page: 1, per_page: 100 }).then(res => {
+      const productMap = new Map(res.goods.map(p => [p.id, p]));
+      let total = 0;
+      if (Array.isArray(order.good_ids)) {
+        order.good_ids.forEach(id => {
+          const p = productMap.get(id);
+          if (p) total += p.discount_price ?? p.actual_price;
+        });
+      }
+      
+      const createdDate = new Date(order.created_at).toLocaleString('ru-RU');
+      const deliveryDate = new Date(order.delivery_date).toLocaleDateString('ru-RU');
+      
+      const details = document.getElementById('view-order-details');
+      if (details) {
+        details.innerHTML = `
+          <p><strong>Дата оформления:</strong> ${createdDate}</p>
+          <p><strong>Имя:</strong> ${order.full_name}</p>
+          <p><strong>Email:</strong> ${order.email}</p>
+          <p><strong>Телефон:</strong> ${order.phone}</p>
+          <p><strong>Подписка на рассылку:</strong> ${order.subscribe ? 'Да' : 'Нет'}</p>
+          <p><strong>Адрес доставки:</strong> ${order.delivery_address}</p>
+          <p><strong>Дата доставки:</strong> ${deliveryDate}</p>
+          <p><strong>Время доставки:</strong> ${order.delivery_interval}</p>
+          <p><strong>Состав заказа:</strong> ${order.good_ids.join(', ')}</p>
+          <p><strong>Стоимость:</strong> ${total.toLocaleString()} ₽</p>
+          <p><strong>Комментарий:</strong> ${order.comment || 'Не указан'}</p>
+        `;
+        document.getElementById('view-order-modal').style.display = 'block';
+      }
+    });
+  }).catch(error => {
+    console.error('Ошибка получения заказа:', error);
+    showNotification('Ошибка загрузки заказа', 'error');
+  });
+}
+
+function editOrder(orderId) {
+  getOrders().then(orders => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const idEl = document.getElementById('edit-order-id');
+    const nameEl = document.getElementById('edit-order-name');
+    const emailEl = document.getElementById('edit-order-email');
+    const phoneEl = document.getElementById('edit-order-phone');
+    const subEl = document.getElementById('edit-order-subscribe');
+    const addrEl = document.getElementById('edit-order-address');
+    const dateEl = document.getElementById('edit-order-delivery-date');
+    const timeEl = document.getElementById('edit-order-delivery-time');
+    const commEl = document.getElementById('edit-order-comment');
+    
+    if (idEl) idEl.value = order.id;
+    if (nameEl) nameEl.value = order.full_name;
+    if (emailEl) emailEl.value = order.email;
+    if (phoneEl) phoneEl.value = order.phone;
+    if (subEl) subEl.checked = order.subscribe;
+    if (addrEl) addrEl.value = order.delivery_address;
+    if (dateEl) dateEl.value = order.delivery_date;
+    if (timeEl) timeEl.value = order.delivery_interval;
+    if (commEl) commEl.value = order.comment || '';
+    
+    document.getElementById('edit-order-modal').style.display = 'block';
+  }).catch(error => {
+    console.error('Ошибка получения заказа для редактирования:', error);
+    showNotification('Ошибка загрузки заказа', 'error');
+  });
+}
+
+function deleteOrderConfirm(orderId) {
+  const modal = document.getElementById('delete-order-modal');
+  if (modal) {
+    modal.dataset.orderId = orderId;
+    modal.style.display = 'block';
+  }
+}
+
+// Обработчик формы редактирования
+document.addEventListener('DOMContentLoaded', () => {
   const editForm = document.getElementById('edit-order-form');
   if (editForm) {
     editForm.addEventListener('submit', async (e) => {
@@ -555,7 +640,6 @@ function setupOrderActions() {
         comment: document.getElementById('edit-order-comment').value.trim()
       };
       
-      // Валидация
       if (!orderData.name || !orderData.email || !orderData.phone || !orderData.address || 
           !orderData.deliveryDate || !orderData.deliveryTime) {
         showNotification('Заполните все обязательные поля', 'error');
@@ -566,13 +650,25 @@ function setupOrderActions() {
         await updateOrder(orderId, orderData);
         showNotification('Заказ обновлён', 'success');
         closeAllModals();
-        loadUserOrders(); // Обновляем список заказов
+        if (document.body.id === 'orders-page') {
+          loadUserOrders();
+        }
       } catch (error) {
         showNotification('Ошибка обновления: ' + (error.message || 'Попробуйте позже'), 'error');
       }
     });
   }
+});
+
+// Вспомогательные функции
+function debounce(func, wait) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 }
 
+// Экспорт
 window.updateCartCount = updateCartCount;
 window.showNotification = showNotification;
