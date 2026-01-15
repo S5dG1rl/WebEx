@@ -669,6 +669,101 @@ function debounce(func, wait) {
   };
 }
 
+// Обработчики для модальных окон
+
+// Крестик закрытия (уже есть в setupModalWindows, но дублируем для надёжности)
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.modal .close').forEach(btn => {
+    btn.addEventListener('click', closeAllModals);
+  });
+});
+
+// Кнопка "Нет" в окне подтверждения удаления
+document.addEventListener('DOMContentLoaded', () => {
+  const deleteNo = document.getElementById('delete-order-no');
+  if (deleteNo) {
+    deleteNo.addEventListener('click', closeAllModals);
+  }
+});
+
+// Кнопка "Да, удалить"
+document.addEventListener('DOMContentLoaded', () => {
+  const deleteYes = document.getElementById('delete-order-yes');
+  if (deleteYes) {
+    deleteYes.addEventListener('click', async () => {
+      const orderId = document.getElementById('delete-order-modal').dataset.orderId;
+      if (orderId) {
+        try {
+          await deleteOrder(parseInt(orderId));
+          showNotification('Заказ успешно удален', 'success');
+          if (document.body.id === 'orders-page') loadUserOrders();
+          closeAllModals();
+        } catch (error) {
+          showNotification('Ошибка удаления заказа: ' + error.message, 'error');
+        }
+      }
+    });
+  }
+});
+
+// Кнопка "Закрыть" в окне просмотра заказа
+document.addEventListener('DOMContentLoaded', () => {
+  const viewClose = document.getElementById('view-order-ok');
+  if (viewClose) {
+    viewClose.addEventListener('click', closeAllModals);
+  }
+});
+
+// Кнопка "Отмена" в окне редактирования
+document.addEventListener('DOMContentLoaded', () => {
+  const editCancel = document.getElementById('edit-order-cancel');
+  if (editCancel) {
+    editCancel.addEventListener('click', closeAllModals);
+  }
+});
+
+// Кнопка "Сохранить изменения" в окне редактирования
+document.addEventListener('DOMContentLoaded', () => {
+  const editSave = document.getElementById('edit-order-save'); // Убедитесь, что ID правильный
+  if (!editSave) {
+    // Если ID не 'edit-order-save', попробуем найти по тексту
+    const buttons = document.querySelectorAll('.modal button');
+    for (let btn of buttons) {
+      if (btn.textContent.includes('Сохранить')) {
+        btn.addEventListener('click', async () => {
+          const orderId = document.getElementById('edit-order-id').value;
+          const orderData = {
+            name: document.getElementById('edit-order-name').value.trim(),
+            email: document.getElementById('edit-order-email').value.trim(),
+            phone: document.getElementById('edit-order-phone').value.trim(),
+            subscribe: document.getElementById('edit-order-subscribe').checked,
+            address: document.getElementById('edit-order-address').value.trim(),
+            deliveryDate: document.getElementById('edit-order-delivery-date').value,
+            deliveryTime: document.getElementById('edit-order-delivery-time').value,
+            comment: document.getElementById('edit-order-comment').value.trim()
+          };
+          
+          if (!orderData.name || !orderData.email || !orderData.phone || !orderData.address || 
+              !orderData.deliveryDate || !orderData.deliveryTime) {
+            showNotification('Заполните все обязательные поля', 'error');
+            return;
+          }
+          
+          try {
+            await updateOrder(parseInt(orderId), orderData);
+            showNotification('Заказ обновлён', 'success');
+            closeAllModals();
+            loadUserOrders();
+          } catch (error) {
+            showNotification('Ошибка обновления: ' + (error.message || 'Попробуйте позже'), 'error');
+          }
+        });
+        break;
+      }
+    }
+  }
+});
+
 // Экспорт
 window.updateCartCount = updateCartCount;
 window.showNotification = showNotification;
