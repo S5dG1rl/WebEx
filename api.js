@@ -1,4 +1,3 @@
-// api.js — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ
 const API_KEY = '0ef845ea-3f76-4af2-9e70-1af33830ec6d';
 
 function getApiUrl(endpoint) {
@@ -6,26 +5,30 @@ function getApiUrl(endpoint) {
 }
 
 /**
- * Получить список товаров
+ * Получить список товаров с пагинацией
  */
 export async function getProducts(params = {}) {
   try {
     const {
       page = 1,
-      per_page = 20,
+      per_page = 12,
       query = '',
-      categories = [],
-      min_price = 0,
-      max_price = 10000,
-      discount_only = false,
-      sort = 'rating-desc'
+      sort_order = 'rating_desc'
     } = params;
 
-    // Формируем URL с параметрами
     const url = new URL(getApiUrl('/exam-2024-1/api/goods'));
     url.searchParams.append('page', page);
     url.searchParams.append('per_page', per_page);
     if (query) url.searchParams.append('query', query);
+    
+    // Маппинг сортировки из нашего формата в API
+    const sortMapping = {
+      'rating-asc': 'rating_asc',
+      'rating-desc': 'rating_desc', 
+      'price-asc': 'price_asc',
+      'price-desc': 'price_desc'
+    };
+    url.searchParams.append('sort_order', sortMapping[sort_order] || 'rating_desc');
 
     const response = await fetch(url.toString());
     
@@ -34,57 +37,23 @@ export async function getProducts(params = {}) {
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    // API возвращает объект { goods: [...], _pagination: {...} }
     const result = await response.json();
-    const products = Array.isArray(result.goods) ? result.goods : [];
-
-    // Фильтрация по категориям
-    let filtered = products;
-    if (categories.length > 0) {
-      filtered = filtered.filter(product =>
-        product.main_category && 
-        categories.includes(product.main_category.toLowerCase())
-      );
-    }
-
-    // Фильтрация по цене
-    filtered = filtered.filter(product => {
-      const price = product.discount_price ?? product.actual_price;
-      return price >= min_price && price <= max_price;
-    });
-
-    // Фильтрация товаров со скидкой
-    if (discount_only) {
-      filtered = filtered.filter(product =>
-        product.discount_price != null && 
-        product.discount_price < product.actual_price
-      );
-    }
-
-    // Сортировка
-    filtered.sort((a, b) => {
-      const aPrice = a.discount_price ?? a.actual_price;
-      const bPrice = b.discount_price ?? b.actual_price;
-      const aRating = a.rating ?? 0;
-      const bRating = b.rating ?? 0;
-
-      switch (sort) {
-        case 'price-asc': return aPrice - bPrice;
-        case 'price-desc': return bPrice - aPrice;
-        case 'rating-asc': return aRating - bRating;
-        case 'rating-desc': return bRating - aRating;
-        default: return bRating - aRating;
+    
+    return {
+      goods: Array.isArray(result.goods) ? result.goods : [],
+      pagination: result._pagination || {
+        current_page: page,
+        per_page: per_page,
+        total_count: 0
       }
-    });
-
-    return filtered;
+    };
   } catch (error) {
     console.error('Ошибка при получении товаров:', error);
-    return [];
+    return { goods: [], pagination: { current_page: 1, per_page: 12, total_count: 0 } };
   }
 }
 
-// Остальные функции остаются без изменений
+// Остальные функции без изменений
 export async function getOrders() {
   try {
     const url = getApiUrl('/exam-2024-1/api/orders');
@@ -93,8 +62,8 @@ export async function getOrders() {
       const errorText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
-    const result = await response.json();
-    return Array.isArray(result) ? result : [];
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Ошибка при получении заказов:', error);
     return [];
