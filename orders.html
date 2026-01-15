@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Личный кабинет</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Хедер -->
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo">Logo</a>
+      <div class="header-actions">
+        <a href="index.html" class="icon">🏠</a>
+        <a href="cart.html" class="icon">🛒</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Уведомления -->
+  <div id="notification" class="notification"></div>
+
+  <!-- Основное содержимое -->
+  <main class="container">
+    <section class="orders-section">
+      <h2>Заказы</h2>
+      <table id="orders-table">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Дата оформления</th>
+            <th>Состав заказа</th>
+            <th>Стоимость</th>
+            <th>Доставка</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Заказы будут загружены через JavaScript -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Модальные окна -->
+  <div id="view-order-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Просмотр заказа</h3>
+      <div id="view-order-details"></div>
+      <button id="view-order-ok" class="btn">Ок</button>
+    </div>
+  </div>
+
+  <div id="edit-order-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Редактирование заказа</h3>
+      <form id="edit-order-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Дата оформления</label>
+            <input type="text" id="edit-order-date" readonly />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-name">Имя</label>
+            <input type="text" id="edit-order-name" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-phone">Номер телефона</label>
+            <input type="text" id="edit-order-phone" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-email">Email</label>
+            <input type="email" id="edit-order-email" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-address">Адрес доставки</label>
+            <input type="text" id="edit-order-address" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-delivery-date">Дата доставки</label>
+            <input type="date" id="edit-order-delivery-date" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-delivery-time">Время доставки</label>
+            <select id="edit-order-delivery-time">
+              <option value="08:00-12:00">08:00-12:00</option>
+              <option value="12:00-18:00">12:00-18:00</option>
+              <option value="18:00-22:00">18:00-22:00</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-order-comment">Комментарий</label>
+            <textarea id="edit-order-comment" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="form-row" style="justify-content: flex-end;">
+          <button type="button" id="edit-order-cancel" class="btn">Отмена</button>
+          <button type="submit" class="btn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="delete-order-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Удаление заказа</h3>
+      <p>Вы уверены, что хотите удалить заказ?</p>
+      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+        <button id="delete-order-no" class="btn">Нет</button>
+        <button id="delete-order-yes" class="btn">Да</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Футер -->
+  <footer>
+    <div class="container">
+      <p>© 2025 Название компании</p>
+    </div>
+  </footer>
+
+  <script src="api.js"></script>
+  <script src="scripts.js"></script>
+</body>
+</html>
