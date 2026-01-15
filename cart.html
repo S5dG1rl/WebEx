@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Корзина</title>
+  <title>Корзина - Интернет-магазин</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -12,79 +12,92 @@
   />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body id="cart-page">
   <!-- Хедер -->
   <header>
     <div class="container">
-      <a href="index.html" class="logo">Logo</a>
+      <a href="index.html" class="logo">Shop</a>
       <div class="header-actions">
         <a href="index.html" class="icon">🏠</a>
+        <a href="cart.html" class="icon">🛒 <span id="cart-count">0</span></a>
         <a href="orders.html" class="icon">👤</a>
       </div>
     </div>
   </header>
 
   <!-- Уведомления -->
-  <div id="notification" class="notification"></div>
+  <div id="notification" class="notification" style="display: none;"></div>
 
   <!-- Основное содержимое -->
   <main class="container">
     <section class="cart-section">
       <h2>Корзина</h2>
       <div id="cart-items" class="products-grid">
-        <!-- Товары корзины будут загружены через JavaScript -->
+        <div class="loading">Загрузка товаров корзины...</div>
       </div>
-      <p id="cart-empty" style="display: none;">Корзина пуста. Перейдите в каталог, чтобы добавить товары.</p>
     </section>
 
-    <section class="order-form">
+    <section class="order-form" id="order-form">
       <h2>Оформление заказа</h2>
       <form id="order-form">
         <div class="form-row">
           <div class="form-group">
-            <label for="name">Имя</label>
-            <input type="text" id="name" required />
+            <label for="name">Имя *</label>
+            <input type="text" id="name" required placeholder="Введите ваше имя" />
           </div>
           <div class="form-group">
-            <label for="address">Адрес доставки</label>
-            <input type="text" id="address" required />
+            <label for="email">Email *</label>
+            <input type="email" id="email" required placeholder="example@email.com" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="phone">Номер телефона</label>
-            <input type="text" id="phone" required />
+            <label for="phone">Номер телефона *</label>
+            <input type="tel" id="phone" required placeholder="+7 (XXX) XXX-XX-XX" />
           </div>
           <div class="form-group">
-            <label for="delivery-date">Дата доставки</label>
+            <label for="subscribe" class="checkbox-group">
+              <input type="checkbox" id="subscribe" checked />
+              <span>Согласен на получение рассылки</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="address">Адрес доставки *</label>
+            <input type="text" id="address" required placeholder="Укажите полный адрес" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="delivery-date">Дата доставки *</label>
             <input type="date" id="delivery-date" required />
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" required />
-          </div>
-          <div class="form-group">
-            <label for="delivery-time">Временной интервал доставки</label>
-            <select id="delivery-time">
+            <label for="delivery-time">Временной интервал доставки *</label>
+            <select id="delivery-time" required>
               <option value="08:00-12:00">08:00-12:00</option>
-              <option value="12:00-18:00">12:00-18:00</option>
-              <option value="18:00-22:00" selected>18:00-22:00</option>
+              <option value="12:00-14:00">12:00-14:00</option>
+              <option value="14:00-18:00" selected>14:00-18:00</option>
+              <option value="18:00-22:00">18:00-22:00</option>
             </select>
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group" style="flex: 1;">
-            <label for="comment">Комментарий</label>
-            <textarea id="comment" rows="3"></textarea>
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="comment">Комментарий к заказу</label>
+            <textarea id="comment" placeholder="Дополнительные пожелания к заказу"></textarea>
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group" style="flex: 1; text-align: right;">
-            <p id="total-cost">Итоговая стоимость: 0 ₽</p>
-            <button type="button" id="reset-cart" class="btn">Сбросить</button>
-            <button type="submit" class="btn">Оформить</button>
+          <div class="form-group" style="grid-column: span 2; text-align: right;">
+            <div id="total-cost" class="total-cost">
+              Итоговая стоимость: 0 ₽
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: flex-end;">
+              <button type="button" id="reset-cart" class="btn" style="background: #7f8c8d;">Сбросить</button>
+              <button type="submit" class="btn">Оформить заказ</button>
+            </div>
           </div>
         </div>
       </form>
@@ -94,11 +107,11 @@
   <!-- Футер -->
   <footer>
     <div class="container">
-      <p>© 2025 Название компании</p>
+      <p>© 2025 Интернет-магазин</p>
+      <p>Контакты: shop@example.com, +7 (495) 123-45-67</p>
     </div>
   </footer>
 
-  <script src="api.js"></script>
-  <script src="scripts.js"></script>
+  <script type="module" src="scripts.js"></script>
 </body>
 </html>
