@@ -504,6 +504,7 @@ function updateTotalCost() {
   });
 }
 
+// ЕДИНСТВЕННАЯ функция setupOrderForm
 function setupOrderForm() {
   const form = document.getElementById('order-form');
   if (!form) return;
@@ -598,92 +599,6 @@ function setupOrderForm() {
     loadCartItems();
     updateTotalCost();
     showNotification('Корзина очищена', 'info');
-  });
-}
-  
-  // Устанавливаем минимальную дату доставки - сегодня
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('delivery-date').min = today;
-  
-  // Расчет стоимости при изменении даты или времени доставки
-  document.getElementById('delivery-date').addEventListener('change', updateTotalCost);
-  document.getElementById('delivery-time').addEventListener('change', updateTotalCost);
-  
-  // Сброс корзины
-  document.getElementById('reset-cart').addEventListener('click', () => {
-    localStorage.removeItem('cart');
-    cart = [];
-    updateCartCount();
-    loadCartItems();
-    updateTotalCost();
-    showNotification('Корзина очищена', 'info');
-  });
-  
-  // Отправка заказа
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    if (cart.length === 0) {
-      showNotification('Корзина пуста', 'error');
-      return;
-    }
-    
-    // Валидация полей
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const address = document.getElementById('address').value.trim();
-    const deliveryDate = document.getElementById('delivery-date').value;
-    const deliveryTime = document.getElementById('delivery-time').value;
-    
-    if (!name || !email || !phone || !address || !deliveryDate || !deliveryTime) {
-      showNotification('Пожалуйста, заполните все обязательные поля', 'error');
-      return;
-    }
-    
-    // Валидация email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showNotification('Некорректный email', 'error');
-      return;
-    }
-    
-    // Валидация телефона (простая)
-    if (phone.length < 10) {
-      showNotification('Некорректный номер телефона', 'error');
-      return;
-    }
-    
-    try {
-      const orderData = {
-        name,
-        email,
-        phone,
-        subscribe: document.getElementById('subscribe').checked,
-        address,
-        deliveryDate,
-        deliveryTime,
-        comment: document.getElementById('comment').value.trim(),
-        items: [...cart] // Копируем массив
-      };
-      
-      await createOrder(orderData);
-      
-      // Очищаем корзину и localStorage
-      cart = [];
-      localStorage.removeItem('cart');
-      updateCartCount();
-      
-      showNotification('Заказ успешно оформлен!', 'success');
-      
-      // Перенаправляем на главную через 2 секунды
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 2000);
-    } catch (error) {
-      console.error('Ошибка оформления заказа:', error);
-      showNotification('Ошибка оформления заказа: ' + (error.message || 'Попробуйте позже'), 'error');
-    }
   });
 }
 
