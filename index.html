@@ -12,45 +12,45 @@
   />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body id="index-page">
   <!-- Хедер -->
   <header>
     <div class="container">
-      <a href="index.html" class="logo">Logo</a>
+      <a href="index.html" class="logo">Shop</a>
       <div class="search-bar">
-        <input type="text" placeholder="Введите запрос" />
-        <button>Найти</button>
+        <input type="text" id="search-input" placeholder="Поиск товаров..." />
+        <div id="autocomplete-results" class="autocomplete-results"></div>
+        <button id="search-button">Найти</button>
       </div>
       <div class="header-actions">
-        <a href="cart.html" class="icon">🛒</a>
+        <a href="cart.html" class="icon">🛒 <span id="cart-count">0</span></a>
         <a href="orders.html" class="icon">👤</a>
       </div>
     </div>
   </header>
 
   <!-- Уведомления -->
-  <div id="notification" class="notification"></div>
+  <div id="notification" class="notification" style="display: none;"></div>
 
   <!-- Основное содержимое -->
   <main class="container">
     <aside class="sidebar">
       <h3>Категории</h3>
-      <div class="filter-group">
-        <label><input type="checkbox" data-category="1"> Категория 1</label>
-        <label><input type="checkbox" data-category="2"> Категория 2</label>
-        <label><input type="checkbox" data-category="3"> Категория 3</label>
-        <label><input type="checkbox" data-category="4"> Категория 4</label>
-        <label><input type="checkbox" data-category="5"> Категория 5</label>
+      <div class="filter-group" id="categories-filter">
+        <!-- Категории будут загружены через JS -->
       </div>
 
       <h3>Стоимость</h3>
       <div class="price-filter">
-        <input type="number" id="price-from" value="100" min="0" />
-        <input type="number" id="price-to" value="5000" min="0" />
+        <input type="number" id="price-from" value="0" min="0" placeholder="От" />
+        <input type="number" id="price-to" value="10000" min="0" placeholder="До" />
       </div>
 
       <div class="filter-group">
-        <label><input type="checkbox" id="discount-only"> Только товары со скидками</label>
+        <label>
+          <input type="checkbox" id="discount-only"> 
+          Только товары со скидками
+        </label>
       </div>
 
       <button id="apply-filters" class="btn">Применить</button>
@@ -69,20 +69,21 @@
 
       <div id="products-grid" class="products-grid">
         <!-- Товары будут загружены через JavaScript -->
+        <div class="loading">Загрузка товаров...</div>
       </div>
 
-      <button id="load-more" class="btn">Загрузить ещё</button>
+      <button id="load-more" class="btn" style="display: none;">Загрузить ещё</button>
     </section>
   </main>
 
   <!-- Футер -->
   <footer>
     <div class="container">
-      <p>© 2025 Название компании</p>
+      <p>© 2025 Интернет-магазин</p>
+      <p>Контакты: shop@example.com, +7 (495) 123-45-67</p>
     </div>
   </footer>
 
-  <script src="api.js"></script>
-  <script src="scripts.js"></script>
+  <script type="module" src="scripts.js"></script>
 </body>
 </html>
