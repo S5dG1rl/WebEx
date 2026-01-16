@@ -7,7 +7,7 @@ function getApiUrl(endpoint) {
 export async function getProducts(params = {}) {
   try {
     const { page = 1, per_page = 12, query = '', sort_order = 'rating_desc' } = params;
-    
+
     const url = new URL(getApiUrl('/exam-2024-1/api/goods'));
     url.searchParams.append('page', page);
     url.searchParams.append('per_page', per_page);
@@ -35,6 +35,7 @@ export async function getProducts(params = {}) {
   }
 }
 
+// Остальные функции без изменений
 export async function getOrders() {
   try {
     const url = getApiUrl('/exam-2024-1/api/orders');
