@@ -10,8 +10,8 @@ import {
 // Глобальные переменные
 let products = [];
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
-let currentPage = 1; // ← ДОБАВЛЕНО
-let productsPerPage = 12; // ← ДОБАВЛЕНО
+let currentPage = 1;
+let productsPerPage = 12;
 let isLoading = false;
 let lastSearchQuery = '';
 let activeFilters = {
@@ -36,7 +36,7 @@ function init() {
     setupSearch();
     setupFilters();
     setupSort();
-    loadProducts(true); // ← ПЕРВАЯ ЗАГРУЗКА
+    loadProducts(true);
   }
   
   if (document.body.id === 'cart-page') {
@@ -124,21 +124,21 @@ function setupSearch() {
       results.innerHTML = '';
       results.classList.remove('show');
       lastSearchQuery = input.value;
-      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      currentPage = 1;
       loadProducts(true);
     }
   });
   
   button.addEventListener('click', () => {
     lastSearchQuery = input.value.trim();
-    currentPage = 1; // ← СБРОС СТРАНИЦЫ
+    currentPage = 1;
     loadProducts(true);
   });
   
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       lastSearchQuery = input.value.trim();
-      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      currentPage = 1;
       loadProducts(true);
     }
   });
@@ -172,23 +172,15 @@ function setupFilters() {
         document.querySelectorAll('#categories-filter input[type="checkbox"]:checked')
       ).map(cb => cb.value);
       
-      currentPage = 1; // ← Сброс страницы при применении фильтров
-      loadProducts(true); // ← Перезагрузка с первой страницы
+      currentPage = 1;
+      loadProducts(true);
     });
   }
   
   if (loadMore) {
     loadMore.addEventListener('click', () => {
-      currentPage++; // ← УВЕЛИЧИВАЕМ НОМЕР СТРАНИЦЫ
-      loadProducts(false); // ← Загружаем следующую страницу
-    });
-  }
-}
-  
-  // АКТИВИРУЕМ КНОПКУ "ЗАГРУЗИТЬ ЕЩЁ"
-  if (loadMore) {
-    loadMore.addEventListener('click', () => {
-      loadProducts(false); // ← ЗАГРУЗКА СЛЕДУЮЩЕЙ СТРАНИЦЫ
+      currentPage++;
+      loadProducts(false);
     });
   }
 }
@@ -198,7 +190,7 @@ function setupSort() {
   if (select) {
     select.addEventListener('change', (e) => {
       activeFilters.sort = e.target.value;
-      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      currentPage = 1;
       loadProducts(true);
     });
   }
@@ -214,11 +206,10 @@ async function loadProducts(shouldReset = true) {
   if (shouldReset) {
     grid.innerHTML = '<div class="loading">Загрузка товаров...</div>';
     currentPage = 1;
-    products = []; // ← ОЧИЩАЕМ МАССИВ
+    products = [];
   }
   
   try {
-    // Загружаем ТОЛЬКО текущую страницу
     const result = await getProducts({
       page: currentPage,
       per_page: productsPerPage,
@@ -228,24 +219,19 @@ async function loadProducts(shouldReset = true) {
     
     const { goods, pagination } = result;
     
-    // Применяем клиентскую фильтрацию к новым товарам
     let filteredGoods = goods.filter(product => {
-      // Фильтр по категориям
       const categoryMatch = activeFilters.categories.length === 0 || 
         activeFilters.categories.includes(product.main_category.toLowerCase());
       
-      // Фильтр по цене
       const price = product.discount_price ?? product.actual_price;
       const inPriceRange = price >= activeFilters.minPrice && price <= activeFilters.maxPrice;
       
-      // Фильтр по скидке
       const hasDiscount = !activeFilters.discountOnly || 
         (product.discount_price != null && product.discount_price < product.actual_price);
       
       return categoryMatch && inPriceRange && hasDiscount;
     });
     
-    // Добавляем отфильтрованные товары
     if (shouldReset) {
       products = filteredGoods;
     } else {
@@ -254,10 +240,8 @@ async function loadProducts(shouldReset = true) {
     
     renderProducts(shouldReset);
     
-    // Управление кнопкой "Загрузить ещё"
     const loadMoreBtn = document.getElementById('load-more');
     if (loadMoreBtn) {
-      // Скрываем кнопку, если загружены все товары
       const allLoaded = products.length >= pagination.total_count;
       loadMoreBtn.style.display = allLoaded ? 'none' : 'block';
     }
@@ -295,7 +279,7 @@ function renderProducts(shouldReset = true) {
   if (!grid) return;
   
   if (shouldReset) {
-    grid.innerHTML = ''; // ← ОЧИЩАЕМ ТОЛЬКО ПРИ СБРОСЕ
+    grid.innerHTML = '';
   }
   
   if (products.length === 0) {
@@ -303,14 +287,12 @@ function renderProducts(shouldReset = true) {
     return;
   }
   
-  // Отображаем ВСЕ товары (уже отфильтрованные)
   products.forEach(product => {
-    // Проверяем, не добавлен ли уже этот товар (защита от дубликатов)
     if (grid.querySelector(`[data-id="${product.id}"]`)) return;
     
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.dataset.id = product.id; // ← ДОБАВЛЯЕМ DATA-ID
+    card.dataset.id = product.id;
     card.innerHTML = `
       <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
       <div class="product-info">
@@ -333,7 +315,6 @@ function renderProducts(shouldReset = true) {
     grid.appendChild(card);
   });
   
-  // Обработчики кнопок
   document.querySelectorAll('.add-to-cart').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = parseInt(e.target.dataset.id);
@@ -346,10 +327,8 @@ function renderProducts(shouldReset = true) {
     });
   });
   
-  // Обновляем категории в сайдбаре (только при первой загрузке)
   if (shouldReset) {
     const categories = new Set();
-    // Для получения всех категорий делаем отдельный запрос без фильтров
     getProducts({ page: 1, per_page: 1000 }).then(res => {
       res.goods.forEach(p => {
         if (p.main_category) categories.add(p.main_category.toLowerCase());
@@ -454,12 +433,10 @@ function setupOrderForm() {
     const deliveryTime = document.getElementById('delivery-time').value;
     const dateInput = document.getElementById('delivery-date').value;
     
-    // ИСПРАВЛЕНИЕ: Валидация и формат даты
     let deliveryDate = '';
     if (dateInput) {
       const now = new Date();
       const selectedDate = new Date(dateInput);
-      // Сравниваем только даты (без времени)
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const selected = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
       
@@ -555,7 +532,6 @@ function renderOrders(orders) {
     tbody.appendChild(row);
   });
   
-  // ДОБАВЛЕНО: обработчики кнопок
   document.querySelectorAll('.view').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const orderId = parseInt(e.target.dataset.id);
@@ -710,36 +686,21 @@ function debounce(func, wait) {
 }
 
 // Обработчики для модальных окон
-
-// Крестик закрытия (уже есть в setupModalWindows, но дублируем для надёжности)
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.modal .close').forEach(btn => {
     btn.addEventListener('click', closeAllModals);
   });
-});
-
-// Кнопка "Нет" в окне подтверждения удаления
-document.addEventListener('DOMContentLoaded', () => {
-  const deleteNo = document.getElementById('delete-order-no');
-  if (deleteNo) {
-    deleteNo.addEventListener('click', closeAllModals);
-  }
-});
-
-// Кнопка "Закрыть" в окне просмотра заказа
-document.addEventListener('DOMContentLoaded', () => {
-  const viewClose = document.getElementById('view-order-ok');
-  if (viewClose) {
-    viewClose.addEventListener('click', closeAllModals);
-  }
-});
-
-// Кнопка "Отмена" в окне редактирования
-document.addEventListener('DOMContentLoaded', () => {
-  const editCancel = document.getElementById('edit-order-cancel');
-  if (editCancel) {
-    editCancel.addEventListener('click', closeAllModals);
-  }
+  
+  const handlers = [
+    { id: 'delete-order-no', action: closeAllModals },
+    { id: 'view-order-ok', action: closeAllModals },
+    { id: 'edit-order-cancel', action: closeAllModals }
+  ];
+  
+  handlers.forEach(({ id, action }) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', action);
+  });
 });
 
 // Экспорт
