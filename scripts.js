@@ -172,10 +172,18 @@ function setupFilters() {
         document.querySelectorAll('#categories-filter input[type="checkbox"]:checked')
       ).map(cb => cb.value);
       
-      currentPage = 1; // ← СБРОС СТРАНИЦЫ
-      loadProducts(true);
+      currentPage = 1; // ← Сброс страницы при применении фильтров
+      loadProducts(true); // ← Перезагрузка с первой страницы
     });
   }
+  
+  if (loadMore) {
+    loadMore.addEventListener('click', () => {
+      currentPage++; // ← УВЕЛИЧИВАЕМ НОМЕР СТРАНИЦЫ
+      loadProducts(false); // ← Загружаем следующую страницу
+    });
+  }
+}
   
   // АКТИВИРУЕМ КНОПКУ "ЗАГРУЗИТЬ ЕЩЁ"
   if (loadMore) {
