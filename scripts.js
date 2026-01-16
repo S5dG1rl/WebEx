@@ -10,6 +10,8 @@ import {
 // Глобальные переменные
 let products = [];
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
+let currentPage = 1; // ← ДОБАВЛЕНО
+let productsPerPage = 12; // ← ДОБАВЛЕНО
 let isLoading = false;
 let lastSearchQuery = '';
 let activeFilters = {
@@ -34,7 +36,7 @@ function init() {
     setupSearch();
     setupFilters();
     setupSort();
-    loadProducts();
+    loadProducts(true); // ← ПЕРВАЯ ЗАГРУЗКА
   }
   
   if (document.body.id === 'cart-page') {
@@ -122,19 +124,22 @@ function setupSearch() {
       results.innerHTML = '';
       results.classList.remove('show');
       lastSearchQuery = input.value;
-      loadProducts();
+      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      loadProducts(true);
     }
   });
   
   button.addEventListener('click', () => {
     lastSearchQuery = input.value.trim();
-    loadProducts();
+    currentPage = 1; // ← СБРОС СТРАНИЦЫ
+    loadProducts(true);
   });
   
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       lastSearchQuery = input.value.trim();
-      loadProducts();
+      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      loadProducts(true);
     }
   });
 }
@@ -167,11 +172,17 @@ function setupFilters() {
         document.querySelectorAll('#categories-filter input[type="checkbox"]:checked')
       ).map(cb => cb.value);
       
-      loadProducts();
+      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      loadProducts(true);
     });
   }
   
-  if (loadMore) loadMore.style.display = 'none';
+  // АКТИВИРУЕМ КНОПКУ "ЗАГРУЗИТЬ ЕЩЁ"
+  if (loadMore) {
+    loadMore.addEventListener('click', () => {
+      loadProducts(false); // ← ЗАГРУЗКА СЛЕДУЮЩЕЙ СТРАНИЦЫ
+    });
+  }
 }
 
 function setupSort() {
@@ -179,68 +190,69 @@ function setupSort() {
   if (select) {
     select.addEventListener('change', (e) => {
       activeFilters.sort = e.target.value;
-      loadProducts();
+      currentPage = 1; // ← СБРОС СТРАНИЦЫ
+      loadProducts(true);
     });
   }
 }
 
-// Загрузка товаров
-async function loadProducts() {
+// ЗАГРУЗКА ТОВАРОВ С ПОДДЕРЖКОЙ ПАГИНАЦИИ
+async function loadProducts(shouldReset = true) {
   if (isLoading) return;
   isLoading = true;
   
   const grid = document.getElementById('products-grid');
-  if (grid) grid.innerHTML = '<div class="loading">Загрузка товаров...</div>';
+  
+  if (shouldReset) {
+    grid.innerHTML = '<div class="loading">Загрузка товаров...</div>';
+    currentPage = 1;
+    products = []; // ← ОЧИЩАЕМ МАССИВ
+  }
   
   try {
-    // Загружаем все товары
-    const result = await getProducts({ page: 1, per_page: 1000 });
-    let allProducts = result.goods;
-    
-    // Клиентская фильтрация
-    if (activeFilters.categories.length > 0) {
-      allProducts = allProducts.filter(p => 
-        activeFilters.categories.includes(p.main_category.toLowerCase())
-      );
-    }
-    
-    allProducts = allProducts.filter(p => {
-      const price = p.discount_price ?? p.actual_price;
-      return price >= activeFilters.minPrice && price <= activeFilters.maxPrice;
+    // Загружаем ТОЛЬКО текущую страницу
+    const result = await getProducts({
+      page: currentPage,
+      per_page: productsPerPage,
+      query: lastSearchQuery,
+      sort_order: activeFilters.sort
     });
     
-    if (activeFilters.discountOnly) {
-      allProducts = allProducts.filter(p => 
-        p.discount_price != null && p.discount_price < p.actual_price
-      );
-    }
+    const { goods, pagination } = result;
     
-    // Сортировка
-    allProducts.sort((a, b) => {
-      const aPrice = a.discount_price ?? a.actual_price;
-      const bPrice = b.discount_price ?? b.actual_price;
-      const aRating = a.rating ?? 0;
-      const bRating = b.rating ?? 0;
+    // Применяем клиентскую фильтрацию к новым товарам
+    let filteredGoods = goods.filter(product => {
+      // Фильтр по категориям
+      const categoryMatch = activeFilters.categories.length === 0 || 
+        activeFilters.categories.includes(product.main_category.toLowerCase());
       
-      switch (activeFilters.sort) {
-        case 'price-asc': return aPrice - bPrice;
-        case 'price-desc': return bPrice - aPrice;
-        case 'rating-asc': return aRating - bRating;
-        case 'rating-desc': return bRating - aRating;
-        default: return bRating - aRating;
-      }
+      // Фильтр по цене
+      const price = product.discount_price ?? product.actual_price;
+      const inPriceRange = price >= activeFilters.minPrice && price <= activeFilters.maxPrice;
+      
+      // Фильтр по скидке
+      const hasDiscount = !activeFilters.discountOnly || 
+        (product.discount_price != null && product.discount_price < product.actual_price);
+      
+      return categoryMatch && inPriceRange && hasDiscount;
     });
     
-    products = allProducts;
+    // Добавляем отфильтрованные товары
+    if (shouldReset) {
+      products = filteredGoods;
+    } else {
+      products = [...products, ...filteredGoods];
+    }
     
-    // Обновляем категории в сайдбаре
-    const categories = new Set();
-    result.goods.forEach(p => {
-      if (p.main_category) categories.add(p.main_category.toLowerCase());
-    });
-    renderCategoriesFilter(categories);
+    renderProducts(shouldReset);
     
-    renderProducts();
+    // Управление кнопкой "Загрузить ещё"
+    const loadMoreBtn = document.getElementById('load-more');
+    if (loadMoreBtn) {
+      // Скрываем кнопку, если загружены все товары
+      const allLoaded = products.length >= pagination.total_count;
+      loadMoreBtn.style.display = allLoaded ? 'none' : 'block';
+    }
     
   } catch (error) {
     console.error('Ошибка загрузки товаров:', error);
@@ -270,22 +282,29 @@ function renderCategoriesFilter(categories) {
   });
 }
 
-function renderProducts() {
+function renderProducts(shouldReset = true) {
   const grid = document.getElementById('products-grid');
   if (!grid) return;
   
-  grid.innerHTML = '';
+  if (shouldReset) {
+    grid.innerHTML = ''; // ← ОЧИЩАЕМ ТОЛЬКО ПРИ СБРОСЕ
+  }
   
   if (products.length === 0) {
     grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;">Товары не найдены</p>';
     return;
   }
   
+  // Отображаем ВСЕ товары (уже отфильтрованные)
   products.forEach(product => {
+    // Проверяем, не добавлен ли уже этот товар (защита от дубликатов)
+    if (grid.querySelector(`[data-id="${product.id}"]`)) return;
+    
     const card = document.createElement('div');
     card.className = 'product-card';
+    card.dataset.id = product.id; // ← ДОБАВЛЯЕМ DATA-ID
     card.innerHTML = `
-      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image  '}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
       <div class="product-info">
         <h3 class="product-name">${product.name}</h3>
         <div class="product-category">${product.main_category}</div>
@@ -306,6 +325,7 @@ function renderProducts() {
     grid.appendChild(card);
   });
   
+  // Обработчики кнопок
   document.querySelectorAll('.add-to-cart').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = parseInt(e.target.dataset.id);
@@ -317,6 +337,18 @@ function renderProducts() {
       }
     });
   });
+  
+  // Обновляем категории в сайдбаре (только при первой загрузке)
+  if (shouldReset) {
+    const categories = new Set();
+    // Для получения всех категорий делаем отдельный запрос без фильтров
+    getProducts({ page: 1, per_page: 1000 }).then(res => {
+      res.goods.forEach(p => {
+        if (p.main_category) categories.add(p.main_category.toLowerCase());
+      });
+      renderCategoriesFilter(categories);
+    });
+  }
 }
 
 // Корзина
@@ -356,7 +388,7 @@ function renderCartItems(products) {
     const item = document.createElement('div');
     item.className = 'product-card';
     item.innerHTML = `
-      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image  '}" alt="${product.name}">
+      <img src="${product.image_url?.trim() || 'https://via.placeholder.com/200x200?text=No+Image'}" alt="${product.name}">
       <div class="product-info">
         <h3>${product.name}</h3>
         <div class="product-price">${(product.discount_price || product.actual_price).toLocaleString()} ₽</div>
@@ -686,26 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Кнопка "Да, удалить"
-document.addEventListener('DOMContentLoaded', () => {
-  const deleteYes = document.getElementById('delete-order-yes');
-  if (deleteYes) {
-    deleteYes.addEventListener('click', async () => {
-      const orderId = document.getElementById('delete-order-modal').dataset.orderId;
-      if (orderId) {
-        try {
-          await deleteOrder(parseInt(orderId));
-          showNotification('Заказ успешно удален', 'success');
-          if (document.body.id === 'orders-page') loadUserOrders();
-          closeAllModals();
-        } catch (error) {
-          showNotification('Ошибка удаления заказа: ' + error.message, 'error');
-        }
-      }
-    });
-  }
-});
-
 // Кнопка "Закрыть" в окне просмотра заказа
 document.addEventListener('DOMContentLoaded', () => {
   const viewClose = document.getElementById('view-order-ok');
@@ -719,48 +731,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const editCancel = document.getElementById('edit-order-cancel');
   if (editCancel) {
     editCancel.addEventListener('click', closeAllModals);
-  }
-});
-
-// Кнопка "Сохранить изменения" в окне редактирования
-document.addEventListener('DOMContentLoaded', () => {
-  const editSave = document.getElementById('edit-order-save'); // Убедитесь, что ID правильный
-  if (!editSave) {
-    // Если ID не 'edit-order-save', попробуем найти по тексту
-    const buttons = document.querySelectorAll('.modal button');
-    for (let btn of buttons) {
-      if (btn.textContent.includes('Сохранить')) {
-        btn.addEventListener('click', async () => {
-          const orderId = document.getElementById('edit-order-id').value;
-          const orderData = {
-            name: document.getElementById('edit-order-name').value.trim(),
-            email: document.getElementById('edit-order-email').value.trim(),
-            phone: document.getElementById('edit-order-phone').value.trim(),
-            subscribe: document.getElementById('edit-order-subscribe').checked,
-            address: document.getElementById('edit-order-address').value.trim(),
-            deliveryDate: document.getElementById('edit-order-delivery-date').value,
-            deliveryTime: document.getElementById('edit-order-delivery-time').value,
-            comment: document.getElementById('edit-order-comment').value.trim()
-          };
-          
-          if (!orderData.name || !orderData.email || !orderData.phone || !orderData.address || 
-              !orderData.deliveryDate || !orderData.deliveryTime) {
-            showNotification('Заполните все обязательные поля', 'error');
-            return;
-          }
-          
-          try {
-            await updateOrder(parseInt(orderId), orderData);
-            showNotification('Заказ обновлён', 'success');
-            closeAllModals();
-            loadUserOrders();
-          } catch (error) {
-            showNotification('Ошибка обновления: ' + (error.message || 'Попробуйте позже'), 'error');
-          }
-        });
-        break;
-      }
-    }
   }
 });
 
